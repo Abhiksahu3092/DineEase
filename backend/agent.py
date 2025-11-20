@@ -1,5 +1,6 @@
 # backend/agent.py
 import json, re, os
+from datetime import datetime
 from backend import tools
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -12,7 +13,13 @@ client = OpenAI(
 )
 
 # Load single unified prompt
-UNIFIED_PROMPT = open("prompts/unified_prompt.txt", encoding="utf-8").read()
+UNIFIED_PROMPT_TEMPLATE = open("prompts/unified_prompt.txt", encoding="utf-8").read()
+
+
+def get_prompt_with_date():
+    """Get the unified prompt with current date injected"""
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    return UNIFIED_PROMPT_TEMPLATE.replace("{{CURRENT_DATE}}", current_date)
 
 
 def call_llm_api(messages, temperature=0.0):
@@ -46,7 +53,9 @@ def run_agent_step(user_message, history):
     new_history.append({"role": "user", "content": user_message})
 
     # Step 2: Use unified prompt for routing
-    messages_for_router = [{"role": "system", "content": UNIFIED_PROMPT}] + new_history
+    messages_for_router = [
+        {"role": "system", "content": get_prompt_with_date()}
+    ] + new_history
 
     llm_out = call_llm_api(messages_for_router)
     tool_call = parse_tool_call(llm_out)
@@ -76,7 +85,7 @@ def run_agent_step(user_message, history):
         ]
 
         messages_for_summary = [
-            {"role": "system", "content": UNIFIED_PROMPT}
+            {"role": "system", "content": get_prompt_with_date()}
         ] + summary_history
         final_reply = call_llm_api(messages_for_summary)
 
